@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TRIPPY 90s DEMO</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: black;
+        font-family: monospace;
+    }
+
+    canvas {
+        display: block;
+    }
+
+    .overlay {
+        position: fixed;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: hotpink;
+        font-size: 20px;
+        text-shadow: 0 0 5px cyan, 0 0 10px magenta;
+        pointer-events: none;
+        animation: blink 1s infinite alternate;
+    }
+
+    @keyframes blink {
+        from { opacity: 0.5; }
+        to { opacity: 1; }
+    }
+</style>
+</head>
+<body>
+
+<div class="overlay">✨ TRIPPY 90's FRACTAL EMOJI DEMO ✨</div>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let w, h;
+function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// === FRACTAL ZOOM (Julia-ish psychedelic fractal) ===
+let zoom = 1;
+let zoomSpeed = 0.003;
+let time = 0;
+
+function drawFractal() {
+    const imageData = ctx.createImageData(w, h);
+    const data = imageData.data;
+
+    let cx = Math.sin(time * 0.001) * 0.5;
+    let cy = Math.cos(time * 0.0013) * 0.5;
+
+    for (let x = 0; x < w; x++) {
+        for (let y = 0; y < h; y++) {
+
+            let zx = 1.5 * (x - w / 2) / (0.5 * zoom * w);
+            let zy = (y - h / 2) / (0.5 * zoom * h);
+
+            let i = 0;
+            const maxIter = 50;
+
+            while (zx * zx + zy * zy < 4 && i < maxIter) {
+                let tmp = zx * zx - zy * zy + cx;
+                zy = 2.0 * zx * zy + cy;
+                zx = tmp;
+                i++;
+            }
+
+            let p = (x + y * w) * 4;
+            let hue = i * 10 + time * 0.5;
+
+            data[p] = Math.sin(hue * 0.02) * 127 + 128;
+            data[p + 1] = Math.sin(hue * 0.03 + 2) * 127 + 128;
+            data[p + 2] = Math.sin(hue * 0.04 + 4) * 127 + 128;
+            data[p + 3] = 255;
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+}
+
+// === BOUNCING LOW-REZ EMOJIS ===
+const emojis = ["😎","🔥","🌈","👾","🌀","💾","✨","🚀","💿","⚡"];
+const emojiObjs = [];
+
+for (let i = 0; i < 25; i++) {
+    emojiObjs.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        dx: (Math.random() - 0.5) * 6,
+        dy: (Math.random() - 0.5) * 6,
+        size: 20 + Math.random() * 30,
+        char: emojis[Math.floor(Math.random() * emojis.length)]
+    });
+}
+
+function drawEmojis() {
+    ctx.font = "20px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    emojiObjs.forEach(e => {
+        e.x += e.dx;
+        e.y += e.dy;
+
+        if (e.x < 0 || e.x > w) e.dx *= -1;
+        if (e.y < 0 || e.y > h) e.dy *= -1;
+
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.rotate(time * 0.002);
+        ctx.font = e.size + "px monospace";
+        ctx.fillText(e.char, 0, 0);
+        ctx.restore();
+    });
+}
+
+// === ANIMATION LOOP ===
+function animate() {
+    time += 16;
+    zoom += zoomSpeed;
+
+    if (zoom > 4 || zoom < 0.5) zoomSpeed *= -1;
+
+    drawFractal();
+    drawEmojis();
+
+    requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+
+</body>
+</html>

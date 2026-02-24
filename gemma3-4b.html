@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>90's Demo - HTML/JS</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+            font-family: 'Courier New', monospace;
+        }
+        canvas {
+            display: block;
+            background-color: transparent; /* Important for transparency */
+        }
+    </style>
+</head>
+<body >
+    <canvas id="demoCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('demoCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Demo Settings - Optimized for demo feel
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const fractalZoomSpeed = 0.8;
+        const fractalZoomAmount = 16; //Limit zoom levels
+        const emojiBounceSpeed = 2;
+        const fractalIterations = 8;
+
+        // Emoji Data
+        const emojis = ['😎', '🤩', '🔥', '✨', '🚀', '👾', '👽', '👻', '💩', '🙈'];
+
+        // Fractal Generator - More complex for a demo look
+        function generateFractal(size, iterations) {
+            let fractal = [];
+            for (let i = 0; i < size; i++) {
+                let row = [];
+                for (let j = 0; j < size; j++) {
+                    let value = Math.random();
+                    row.push(value);
+                }
+                fractal.push(row);
+            }
+            return fractal;
+        }
+
+        // Function to draw the fractal
+        function drawFractal(fractal, xOffset, yOffset) {
+            for (let i = 0; i < fractal.length; i++) {
+                for (let j = 0; j < fractal[i].length; j++) {
+                    const value = fractal[i][j];
+                    ctx.fillStyle = `rgba(255, 255, 255, ${value * 0.5})`; // Transparent gradient
+                    ctx.fillRect(xOffset + j * 4, yOffset + i * 4, 4, 4);
+                }
+            }
+        }
+
+        // Main Demo Loop - Smoother animation and better organization
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Fractal Animation - Smoother Zoom
+            let fractal = generateFractal(width, fractalIterations);
+            let xOffset = (ctx.currentTime * fractalZoomSpeed) % width;
+            let yOffset = (ctx.currentTime * fractalZoomSpeed) % height;
+
+            drawFractal(fractal, xOffset, yOffset);
+
+            // Emoji Bouncing - Reduced emoji count for smoother animation
+            const emojiCount = 5;
+            for (let i = 0; i < emojiCount; i++) {
+                const emoji = emojis[i % emojis.length];  // Cycle emojis
+                const emojiSize = 16;
+
+                let x = Math.random() * width - emojiSize;
+                let y = Math.random() * height - emojiSize;
+
+                ctx.fillStyle = 'white';
+                ctx.font = `${emojiSize}px Courier New`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(emoji, x, y);
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>

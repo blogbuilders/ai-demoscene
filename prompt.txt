@@ -1,0 +1,1 @@
+Make me a cool 90's style graphics demo in pure html and javascript. Make it really trippy with fractal animations of fractals zooming in the canvas and lots of bouncing low rez emoji's.

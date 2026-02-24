@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tripster 3000 - Fractal Emoji Animation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #0ff;
+            font-family: 'Arial', sans-serif;
+            user-select: none;
+        }
+        
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(45deg, #000000, #000022);
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+            letter-spacing: 4px;
+            animation: glitch 5s infinite;
+        }
+        
+        .canvas-container {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            margin: 20px auto;
+            border: 2px solid #0ff;
+            box-shadow: 0 0 20px #0ff;
+            overflow: hidden;
+        }
+        
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        button {
+            background-color: #000;
+            color: #0ff;
+            border: 2px solid #0ff;
+            padding: 8px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            text-shadow: 0 0 5px #0ff;
+            transition: all 0.3s;
+            border-radius: 4px;
+        }
+        
+        button:hover {
+            background-color: #0ff;
+            color: #000;
+            box-shadow: 0 0 10px #0ff;
+        }
+        
+        .instructions {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #0ff;
+            text-shadow: 0 0 5px #0ff;
+            font-size: 14px;
+        }
+        
+        @keyframes glitch {
+            0% { transform: translate(0) } 
+            5% { transform: translate(-2px, 2px); }
+            10% { transform: translate(2px, -2px); }
+            20% { transform: translate(-2px, 2px); }
+            30% { transform: translate(2px, -2px); }
+            50% { transform: translate(0, 0); }
+            100% { transform: translate(0, 0); }
+        }
+        
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.7), transparent);
+            animation: scan 5s linear infinite;
+            box-shadow: 0 0 5px #0ff;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        
+        .grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="instructions">
+            <h2>WELCOME TO TRIPSTER 3000</h2>
+            <p>Press SPACE to toggle fullscreen mode</p>
+            <p>Press ESC to exit</p>
+        </div>
+        
+        <div class="canvas-container">
+            <div class="grid"></div>
+            <canvas id="fractalCanvas"></canvas>
+            <canvas id="emojiCanvas"></canvas>
+            <div class="scan-line"></div>
+        </div>
+        
+        <div class="controls">
+            <button id="resetBtn">RESET</button>
+            <button id="speedUpBtn">SPEED+</button>
+            <button id="speedDownBtn">SPEED-</button>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('fractalCanvas');
+        const emojiCanvas = document.getElementById('emojiCanvas');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedUpBtn = document.getElementById('speedUp =speedDownBtn');
+        const speedDownBtn = document.getElementById('speedDownBtn');
+        const ctx = canvas.getContext('2d');
+        const emojiCtx = emojiCanvas.getContext('2d');
+
+        // Set canvas dimensions
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            emojiCanvas.width = canvas.offsetWidth;
+            emojiCanvas.height = canvas.offsetHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Fractal parameters
+        let zoom = 1;
+        let centerX = -0.7;
+        let centerY = 0;
+        let maxIterations = 100;
+        let speed = 0.01;
+        let isFullscreen = false;
+
+        // Emoji parameters
+        const emojis = ['😊', '😎', '👾', '👻', '🤖', '👾', '👹', '👺', '👽', '👾', '💩', '🧠', '👾'];
+        const emojisPerFrame = 3;
+        let emojiSpeed = 1;
+        let emojisArray = [];
+
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                toggleFullscreen();
+            } else if (e.code === 'Escape') {
+                exitFullscreen();
+            }
+        });
+
+        // Button controls
+        resetBtn.addEventListener('click', () => {
+            zoom = 1;
+            centerX = -0.7;
+            centerY = 0;
+            maxIterations = 100;
+            emojiSpeed = 1;
+            emojisArray = [];
+        });
+
+        speedUpBtn.addEventListener('click', () => {
+            speed = Math.min(speed + 0.01, 0.1);
+        });
+
+        speedDownBtn.addEventListener('click', () => {
+            speed = Math.max(speed - 0.01, 0.001);
+        });
+
+        // Fullscreen functions
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                canvas.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+                isFullscreen = true;
+            } else {
+                document.exitFullscreen();
+                isFullscreen = false;
+            }
+        }
+
+        function exitFullscreen() {
+            document.exitFullscreen();
+            isFullscreen = false;
+        }
+
+        // Fractal calculation (Mandlebrot set with coloring)
+        function calculateMandlebrot(x, y, zoom, centerX, centerY, maxIterations) {
+            // Convert pixel coordinates to fractal coordinates
+            let cx = x / (canvas.width / 3.0) + centerX * zoom;
+            let cy = y / (canvas.height / 3.0) + centerY * zoom;
+            let zx = 0;
+            let zy = 0;
+            let i = 0;
+            
+            while (zx * zx + zy * zy < 4 && i < maxIterations) {
+                let temp = zx * zx - zy * zy + cx;
+                zy = 2 * zx * zy + cy;
+                zx = temp;
+                i++;
+            }
+            
+            return i;
+        }
+
+        // Draw fractal
+        function drawFractal() {
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const iterations = calculateMandlebrot(x, y, zoom, centerX, centerY, maxIterations);
+                    const color = getColor(iterations, maxIterations);
+                    const index = (y * canvas.width + x) * 4;
+                    
+                    data[index] = color.r;     // Red
+                    data[index + 1] = color.g; // Green
+                    data[index + 2] = color.b; // Blue
+                    data[index + 3] = 255;      // Alpha
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // Get color based on iterations
+        function getColor(iterations, maxIterations) {
+            const t = iterations / maxIterations;
+            const r = Math.floor(255 * Math.sin(t * Math.PI * 2) * Math.cos(t * Math.PI));
+            const g = Math.floor(255 * Math.sin(t * Math.PI * 2) * Math.sin(t * Math.PI));
+            const b = Math.floor(255 * Math.cos(t * Math.PI * 2) * Math.cos(t * Math.PI));
+            
+            return { r: r, g: g, b: b };
+        }
+
+        // Create bouncing emojis
+        function createEmoji() {
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            const size = Math.random() * 20 + 10;
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const speedX = (Math.random() - 0.5) * 5 * emojiSpeed;
+            const speedY = (Math.random() - 0.5) * 5 * emojiSpeed;
+            
+            emojisArray.push({
+                emoji: emoji,
+                x: x,
+                y: y,
+                speedX: speedX,
+                speedY: speedY,
+                size: size,
+                rotation: Math.random() * 360,
+                rotationSpeed: (Math.random() - 0.5) * 5
+            });
+        }
+
+        // Update emojis
+        function updateEmojis() {
+            for (let i = 0; i < emojisArray.length; i++) {
+                const emoji = emojisArray[i];
+                
+                // Move emoji
+                emoji.x += emoji.speedX;
+                emoji.y += emoji.speedY;
+                emoji.rotation += emoji.rotationSpeed;
+                
+                // Bounce off edges
+                if (emoji.x < 0 || emoji.x > canvas.width) {
+                    emoji.speedX *= -1;
+                    emoji.x = emoji.x < 0 ? 0 : canvas.width;
+                }
+                
+                if (emoji.y < 0 || emoji.y > canvas.height) {
+                    emoji.speedY *= -1;
+                    emoji.y = emoji.y < 0 ? 0 : canvas.height;
+                }
+            }
+        }
+
+        // Draw emojis
+        function drawEmojis() {
+            emojiCtx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < emojisArray.length; i++) {
+                const emoji = emojisArray[i];
+                
+                // Save the current drawing state
+                emojiCtx.save();
+                
+                // Translate to the emoji position
+                emojiCtx.translate(emoji.x, emoji.y);
+                
+                // Rotate the emoji
+                emojiCtx.rotate(emoji.rotation * Math.PI / 180);
+                
+                // Set font properties
+                emojiCtx.font = `${emoji.size}px Arial`;
+                
+                // Create a gradient fill for the emoji
+                const gradient = emojiCtx.createRadialGradient(
+                    emoji.x, emoji.y, 0,
+                    emoji.x, emoji.y, emoji.size
+                );
+                
+                gradient.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
+                gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+                
+                emojiCtx.fillStyle = gradient;
+                emojiCtx.fillText(emoji.emoji, -emoji.size/2, 0);
+                
+                // Draw a pulsing glow
+                emojiCtx.shadowColor = '#0ff';
+                emojiCtx.shadowBlur = 10;
+                emojiCtx.shadowOffsetX = 0;
+                emojiCtx.shadowOffsetY = 0;
+                emojiCtx.fillText(emoji.emoji, -emoji.size/2, 0);
+                
+                // Restore the drawing state
+                emojiCtx.restore();
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            // Update fractal position
+            centerX -= speed;
+            if (centerX < -2) centerX = -0.7;
+            
+            // Draw everything
+            drawFractal();
+            updateEmojis();
+            drawEmojis();
+            
+            // Create new emojis
+            if (emojisArray.length < 50 + Math.floor(zoom * 10)) {
+                for (let i = 0; i < emojisPerFrame; i++) {
+                    createEmoji();
+                }
+            }
+            
+            // Continue animation
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>

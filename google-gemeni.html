@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>90s FRACTAL DEMO</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: "Courier New", monospace; overflow: hidden; margin: 0; }
+        #ui { position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; border: 2px outset #666; }
+        marquee { width: 100%; position: absolute; bottom: 0; background: #0000ff; color: #fff; font-weight: bold; font-size: 24px; }
+        canvas { display: block; image-rendering: pixelated; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        FRACTAL_ZOOMER_V1.0<br>
+        [PURE_JS_NO_LIBRARIES]<br>
+        FPS: <span id="fps">0</span>
+    </div>
+    
+    <canvas id="fractalCanvas"></canvas>
+    
+    <marquee scrollamount="15">!!! WELCOME TO THE TRIPPY 90S FRACTAL ZONE !!! BEST VIEWED IN NETSCAPE NAVIGATOR !!!</marquee>
+
+    <script>
+        const canvas = document.getElementById('fractalCanvas');
+        const ctx = canvas.getContext('2d');
+        const fpsDisplay = document.getElementById('fps');
+
+        let width, height, zoom = 1.0;
+        const emojis = ['👽', '🔥', '💎', '🌈', '💾', '💀', '🍕'];
+        const sprites = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth / 2; // Low-rez for speed/style
+            height = canvas.height = window.innerHeight / 2;
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+        }
+
+        // Initialize bouncing sprites
+        for (let i = 0; i < 20; i++) {
+            sprites.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                dx: (Math.random() - 0.5) * 10,
+                dy: (Math.random() - 0.5) * 10,
+                char: emojis[Math.floor(Math.random() * emojis.length)],
+                size: 20 + Math.random() * 40
+            });
+        }
+
+        function drawFractal(time) {
+            const imgData = ctx.createImageData(width, height);
+            const data = imgData.data;
+            
+            // Fractal parameters
+            const cx = -0.7 + Math.sin(time * 0.001) * 0.1;
+            const cy = 0.27015 + Math.cos(time * 0.001) * 0.1;
+            zoom *= 1.01;
+            if (zoom > 100) zoom = 1.0;
+
+            for (let x = 0; x < width; x++) {
+                for (let y = 0; y < height; y++) {
+                    let zx = 1.5 * (x - width / 2) / (0.5 * zoom * width);
+                    let zy = (y - height / 2) / (0.5 * zoom * height);
+                    let i = 0;
+                    while (zx * zx + zy * zy < 4 && i < 32) {
+                        let tmp = zx * zx - zy * zy + cx;
+                        zy = 2.0 * zx * zy + cy;
+                        zx = tmp;
+                        i++;
+                    }
+                    const pix = (x + y * width) * 4;
+                    data[pix] = i * 8;         // Red
+                    data[pix + 1] = (i * 16) % 255; // Green
+                    data[pix + 2] = (i * 32) % 255; // Blue
+                    data[pix + 3] = 255;       // Alpha
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function updateSprites() {
+            ctx.font = '40px monospace';
+            sprites.forEach(s => {
+                s.x += s.dx;
+                s.y += s.dy;
+                if (s.x < 0 || s.x > width * 2) s.dx *= -1;
+                if (s.y < 0 || s.y > height * 2) s.dy *= -1;
+                
+                // Scale coords back to full window for emojis
+                ctx.fillText(s.char, s.x / 2, s.y / 2);
+            });
+        }
+
+        let lastTime = 0;
+        function animate(time) {
+            fpsDisplay.innerText = Math.round(1000 / (time - lastTime));
+            lastTime = time;
+
+            drawFractal(time);
+            updateSprites();
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>【 90s TRIPPY FRACTAL RAVE 】</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Press Start 2P', system-ui;
+            color: #0ff;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 {
+            margin: 0;
+            font-size: 42px;
+            text-align: center;
+            text-shadow: 
+                0 0 10px #0ff,
+                0 0 20px #0ff,
+                0 0 40px #f0f,
+                0 0 60px #f0f;
+            animation: neon 1.5s infinite alternate;
+        }
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            text-shadow: 0 0 10px #0f0;
+        }
+        @keyframes neon {
+            from { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #f0f; }
+            to { text-shadow: 0 0 20px #0ff, 0 0 40px #f0f, 0 0 80px #f0f; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    
+    <div id="overlay">
+        <h1>90s FRACTAL RAVE</h1>
+        <div class="footer">
+            <div>ZOOMING MANDELBROT • INFINITE TRIP</div>
+            <div>BOUNCING LOW-REZ EMOJIS • PRESS ESC TO PAUSE</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d', { alpha: true });
+        
+        // Low-res fractal layer (retro pixel feel)
+        const FRACTAL_W = 512;
+        const FRACTAL_H = 384;
+        const fractalCanvas = document.createElement('canvas');
+        fractalCanvas.width = FRACTAL_W;
+        fractalCanvas.height = FRACTAL_H;
+        const fctx = fractalCanvas.getContext('2d');
+        
+        let minX = -2.5;
+        let maxX = 1.0;
+        let minY, maxY;
+        let initialRangeX;
+        let paletteShift = 0;
+        let frame = 0;
+        let paused = false;
+        
+        const emojis = ["😎","🔥","🌈","🌀","🍄","👾","🛸","💾","🎮","🌟","🐍","🦋","☮️","✌️","🌪️","💥"];
+        let bouncers = [];
+        
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+        
+        function drawFractal() {
+            const imageData = fctx.createImageData(FRACTAL_W, FRACTAL_H);
+            const data = imageData.data;
+            
+            const dx = (maxX - minX) / FRACTAL_W;
+            const dy = (maxY - minY) / FRACTAL_H;
+            
+            const maxIter = Math.min(280, 35 + Math.floor(Math.log10(Math.max(1, initialRangeX / (maxX - minX))) * 35));
+            
+            for (let py = 0; py < FRACTAL_H; py++) {
+                const y0 = minY + py * dy;
+                for (let px = 0; px < FRACTAL_W; px++) {
+                    const x0 = minX + px * dx;
+                    let x = 0, y = 0;
+                    let iter = 0;
+                    
+                    while (x*x + y*y <= 4 && iter < maxIter) {
+                        const xt = x*x - y*y + x0;
+                        y = 2*x*y + y0;
+                        x = xt;
+                        iter++;
+                    }
+                    
+                    const idx = (py * FRACTAL_W + px) * 4;
+                    
+                    if (iter === maxIter) {
+                        data[idx] = 5;
+                        data[idx+1] = 0;
+                        data[idx+2] = 15;
+                        data[idx+3] = 255;
+                    } else {
+                        const hue = (iter * 12 + paletteShift) % 360;
+                        const lum = 0.45 + (iter % 12) / 30;
+                        const [r, g, b] = hslToRgb(hue / 360, 0.95, lum);
+                        data[idx] = r;
+                        data[idx+1] = g;
+                        data[idx+2] = b;
+                        data[idx+3] = 255;
+                    }
+                }
+            }
+            fctx.putImageData(imageData, 0, 0);
+        }
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        function createBouncer() {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 11,
+                vy: (Math.random() - 0.5) * 11,
+                size: 24 + Math.random() * 52,
+                emoji: emojis[Math.floor(Math.random() * emojis.length)],
+                angle: Math.random() * Math.PI * 2,
+                vangle: (Math.random() - 0.5) * 0.18
+            };
+        }
+        
+        function init() {
+            resize();
+            
+            // Set fractal bounds to match low-res canvas aspect
+            minX = -2.5;
+            maxX = 1.0;
+            initialRangeX = maxX - minX;
+            const rangeY = initialRangeX * (FRACTAL_H / FRACTAL_W);
+            minY = -rangeY / 2;
+            maxY = rangeY / 2;
+            
+            // Spawn bouncers
+            bouncers = [];
+            for (let i = 0; i < 68; i++) {
+                bouncers.push(createBouncer());
+            }
+        }
+        
+        function animate() {
+            if (paused) {
+                requestAnimationFrame(animate);
+                return;
+            }
+            
+            // Ultra-slow smooth zoom into the fractal
+            const cx = (minX + maxX) / 2;
+            const cy = (minY + maxY) / 2;
+            const zoomFactor = 0.9935; // nice trippy speed
+            const rangeX = (maxX - minX) * zoomFactor;
+            const rangeY = (maxY - minY) * zoomFactor;
+            
+            minX = cx - rangeX / 2;
+            maxX = cx + rangeX / 2;
+            minY = cy - rangeY / 2;
+            maxY = cy + rangeY / 2;
+            
+            // Draw the fractal background
+            drawFractal();
+            
+            // Stretch low-res fractal to full screen with nearest-neighbor (pure 90s pixel vibe)
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(fractalCanvas, 0, 0, canvas.width, canvas.height);
+            
+            // Update & draw bouncing emojis
+            paletteShift = (paletteShift + 5) % 360;
+            
+            for (let i = 0; i < bouncers.length; i++) {
+                const b = bouncers[i];
+                
+                b.x += b.vx;
+                b.y += b.vy;
+                b.angle += b.vangle;
+                
+                // Bounce with retro energy loss
+                const half = b.size * 0.55;
+                if (b.x < half) { b.x = half; b.vx = -b.vx * 0.82; }
+                if (b.x > canvas.width - half) { b.x = canvas.width - half; b.vx = -b.vx * 0.82; }
+                if (b.y < half) { b.y = half; b.vy = -b.vy * 0.82; }
+                if (b.y > canvas.height - half) { b.y = canvas.height - half; b.vy = -b.vy * 0.82; }
+                
+                // Gentle chaotic wobble
+                b.vx += (Math.random() - 0.5) * 0.6;
+                b.vy += (Math.random() - 0.5) * 0.6;
+                b.vx *= 0.985;
+                b.vy *= 0.985;
+            }
+            
+            // Draw all the bouncy boys with heavy neon glow
+            for (let i = 0; i < bouncers.length; i++) {
+                const b = bouncers[i];
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                ctx.rotate(b.angle);
+                
+                const glowHue = (paletteShift * 1.8 + i * 7) % 360;
+                ctx.shadowColor = `hsl(${glowHue}, 100%, 85%)`;
+                ctx.shadowBlur = 35;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                
+                ctx.font = `${Math.floor(b.size)}px Arial`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(b.emoji, 0, 0);
+                
+                ctx.restore();
+            }
+            
+            // Classic CRT scanlines + phosphor glow
+            ctx.globalAlpha = 0.12;
+            ctx.strokeStyle = "#00ffcc";
+            ctx.lineWidth = 2;
+            for (let y = 3; y < canvas.height; y += 6) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1.0;
+            
+            // Subtle vignette corners (very 90s)
+            const grad = ctx.createRadialGradient(
+                canvas.width/2, canvas.height/2, Math.min(canvas.width, canvas.height) * 0.6,
+                canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height) * 0.8
+            );
+            grad.addColorStop(0, "transparent");
+            grad.addColorStop(1, "rgba(0,0,0,0.6)");
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            frame++;
+            requestAnimationFrame(animate);
+        }
+        
+        // Controls
+        document.addEventListener('keydown', e => {
+            if (e.key === "Escape") {
+                paused = !paused;
+            }
+            if (e.key === "r" || e.key === "R") {
+                // Reset zoom
+                minX = -2.5;
+                maxX = 1.0;
+                const rangeY = (maxX - minX) * (FRACTAL_H / FRACTAL_W);
+                minY = -rangeY / 2;
+                maxY = rangeY / 2;
+            }
+        });
+        
+        // Click to reverse zoom direction (extra trippy)
+        let zoomDirection = 1;
+        canvas.addEventListener('click', () => {
+            zoomDirection *= -1;
+        });
+        
+        // Start the rave
+        window.addEventListener('load', () => {
+            init();
+            animate();
+        });
+        
+        window.addEventListener('resize', () => {
+            resize();
+        });
+    </script>
+</body>
+</html>

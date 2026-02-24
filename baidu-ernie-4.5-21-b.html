@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>90s Trippy Graphics Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="fractalCanvas"></canvas>
+    <div class="controls">
+        <button id="startBtn">Start Demo</button>
+        <button id="resetBtn">Reset Animation</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('fractalCanvas');
+            const ctx = canvas.getContext('2d');
+            const startBtn = document.getElementById('startBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            // Set canvas to full window size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            let animationId = null;
+            let isPlaying = false;
+            let emojis = [];
+            const emojiSize = 24;
+            let fractalLevel = 0;
+            let fractalZoomSpeed = 0.01;
+            let fractalScale = 1.0;
+            let emojiPositions = [];
+            let bounceDirectionX = 1;
+            let bounceDirectionY = -1;
+            
+            // Create initial emojis
+            function createEmojis() {
+                emojiPositions = [];
+                const emojiCount = Math.floor(canvas.width * canvas.height / (200 * 200));
+                for (let i = 0; i < emojiCount; i++) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    emojiPositions.push({x, y});
+                }
+            }
+            createEmojis();
+            
+            // Simple fractal generator (Mandelbrot set)
+            function generateFractal(level, x, y, size) {
+                const maxIterations = 100;
+                let zx, zy, iterations;
+                zx = zy = 0;
+                iterations = 0;
+                
+                while (zx * zx + zy * zy < 4 && iterations < maxIterations) {
+                    const temp = zx;
+                    zx = zx * zx - zy * zy + x;
+                    zy = 2 * temp * zy + y;
+                    iterations++;
+                }
+                
+                return iterations / maxIterations; // Normalize to [0,1]
+            }
+            
+            // Draw fractal with current level and zoom
+            function drawFractal(level, x, y, size) {
+                ctx.fillStyle = `hsl(${level * 360}, 100%, 50%)`;
+                const iterations = generateFractal(level, x / fractalScale, y / fractalScale, size);
+                
+                // Create gradient based on iteration count
+                const gradient = ctx.createLinearGradient(x - size/2, y - size/2, x + size/2, y + size/2);
+                gradient.addColorStop(0, `hsl(${iterations * 360}, 100%, 50%)`);
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillRect(x - size/2, y - size/2, size, size);
+            }
+            
+            // Animate emojis
+            function animateEmojis() {
+                emojiPositions.forEach((pos, i) => {
+                    let newX = pos.x + Math.random() * 4 - 2;
+                    let newY = pos.y + Math.random() * 4 - 2;
+                    
+                    // Bounce off walls
+                    if (newX > canvas.width || newX < 0) bounceDirectionX *= -1;
+                    if (newY > canvas.height || newY < 0) bounceDirectionY *= -1;
+                    
+                    newX += Math.random() * 4 - 2; // Add some randomness
+                    newY += Math.random() * 4 - 2;
+                    
+                    emojiPositions[i] = {x: newX, y: newY};
+                });
+            }
+            
+            // Update fractal animation
+            function animateFractal() {
+                fractalLevel += fractalZoomSpeed;
+                fractalScale += Math.sin(fractalLevel) * 0.5;
+                
+                if (fractalScale > 3) fractalZoomSpeed = -0.01;
+                else if (fractalScale < 1) fractalZoomSpeed = 0.01;
+                
+                // Clear and draw new fractal
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const size = Math.min(canvas.width, canvas.height) * 0.4;
+                
+                ctx.globalAlpha = 0.8;
+                for (let i = 0; i < 5; i++) {
+                    drawFractal(fractalLevel + i * 0.1, centerX - size/2 + i*size, centerY - size/2, size);
+                }
+                ctx.globalAlpha = 1;
+            }
+            
+            // Draw all emojis
+            function drawEmojis() {
+                emojiPositions.forEach(pos => {
+                    const x = pos.x;
+                    const y = pos.y;
+                    
+                    // Convert coordinates to center of canvas for proper placement
+                    ctx.save();
+                    ctx.translate(canvas.width/2, canvas.height/2);
+                    ctx.scale(fractalScale * 0.5, fractalScale * 0.5);
+                    
+                    // Choose random emoji
+                    const emojis = ['😎', '🤖', '🌈', '✨', '🔥', '💣', '⚡', '🛸'];
+                    const emojiIndex = Math.floor(Math.random() * emojis.length);
+                    const emoji = emojis[emojiIndex];
+                    
+                    // Draw emoji with some distortion for 90s effect
+                    ctx.fillStyle = 'white';
+                    ctx.font = `${emojiSize}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    // Add wave distortion
+                    for (let i = -5; i <= 5; i++) {
+                        const offset = Math.sin(i * 0.1) * emojiSize / 8;
+                        ctx.fillText(emoji, x + i * offset, y);
+                    }
+                    
+                    // Add some glow effect
+                    ctx.shadowColor = 'white';
+                    ctx.shadowBlur = emojiSize / 2;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                    
+                    ctx.restore();
+                });
+            }
+            
+            // Animation loop
+            function animate() {
+                animateEmojis();
+                animateFractal();
+                drawEmojis();
+                animationId = requestAnimationFrame(animate);
+            }
+            
+            // Start the demo
+            startBtn.addEventListener('click', () => {
+                if (!isPlaying) {
+                    createEmojis();
+                    animate();
+                    isPlaying = true;
+                }
+            });
+            
+            // Reset animation
+            resetBtn.addEventListener('click', () => {
+                cancelAnimationFrame(animationId);
+                fractalLevel = 0;
+                fractalScale = 1.0;
+                createEmojis();
+                animateEmojis();
+                animateFractal();
+                drawEmojis();
+            });
+        });
+    </script>
+</body>
+</html>

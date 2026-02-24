@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>✦ CYBER RAVE DEMO ✦ 1997 EDITION ✦</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: 'Press Start 2P', monospace;
+    cursor: crosshair;
+  }
+  #bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; }
+  #fractal { position: fixed; top:0; left:0; width:100%; height:100%; z-index:1; opacity:0.85; }
+  #emojis { position: fixed; top:0; left:0; width:100%; height:100%; z-index:2; pointer-events:none; }
+  #ui { position: fixed; top:0; left:0; width:100%; z-index:3; pointer-events:none; }
+  .title-bar {
+    background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff);
+    background-size: 200% 100%;
+    animation: slidebg 1s linear infinite;
+    color: #000;
+    text-align: center;
+    font-size: 10px;
+    padding: 4px;
+    text-shadow: none;
+    letter-spacing: 2px;
+  }
+  @keyframes slidebg {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 200% 0%; }
+  }
+  .big-title {
+    text-align: center;
+    margin-top: 10px;
+    font-size: clamp(14px, 3vw, 28px);
+    color: #fff;
+    text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 3px 3px 0 #ff00ff, -3px -3px 0 #00ffff;
+    animation: flicker 0.1s steps(1) infinite;
+  }
+  @keyframes flicker {
+    0%,90%,100% { opacity:1; }
+    95% { opacity:0.7; }
+  }
+  .sub-title {
+    text-align: center;
+    font-size: clamp(6px, 1.2vw, 10px);
+    color: #00ff00;
+    text-shadow: 0 0 8px #00ff00;
+    margin-top: 6px;
+    animation: colorshift 2s linear infinite;
+    letter-spacing: 3px;
+  }
+  @keyframes colorshift {
+    0% { color: #00ff00; text-shadow: 0 0 8px #00ff00; }
+    25% { color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }
+    50% { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
+    75% { color: #ffff00; text-shadow: 0 0 8px #ffff00; }
+    100% { color: #00ff00; text-shadow: 0 0 8px #00ff00; }
+  }
+  #counter {
+    position: fixed;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    color: #ffff00;
+    text-shadow: 0 0 6px #ffff00;
+    z-index: 10;
+    letter-spacing: 2px;
+  }
+  #scrolltext {
+    position: fixed;
+    bottom: 24px;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    z-index: 10;
+    pointer-events: none;
+  }
+  #scrollinner {
+    display: inline-block;
+    white-space: nowrap;
+    font-size: 10px;
+    color: #ff00ff;
+    text-shadow: 0 0 8px #ff00ff;
+    animation: scroller 18s linear infinite;
+  }
+  @keyframes scroller {
+    0% { transform: translateX(100vw); }
+    100% { transform: translateX(-100%); }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<canvas id="fractal"></canvas>
+<canvas id="emojis"></canvas>
+
+<div id="ui">
+  <div class="title-bar">★ GREETINGS TO ALL SCENE MEMBERS ★ THIS DEMO REQUIRES A PENTIUM 90MHZ OR BETTER ★</div>
+  <div class="big-title">✦ CYBER·RAVE·DEMO ✦</div>
+  <div class="sub-title">◈ FRACTAL ENGINE v3.7 ◈ PRESENTED BY TEAM NEON ◈</div>
+</div>
+
+<div id="scrolltext">
+  <span id="scrollinner">
+    ★★★ GREETINGS TO: TRITON / RAZOR / ENZYMES / FUTURE CREW / SKID ROW / ACiD / iCE / THE HUMBLE GUYS ★ THIS DEMO WAS CODED IN 3 DAYS STRAIGHT ON MT DEW AND PIZZA ★ SHOUTOUT TO #DEMO ON EFNET ★ AMIGA FOREVER ★ MOD FILES RULE ★ FAST TRACKER 2 ★ IMPULSE TRACKER ★ THE SCENE NEVER DIES ★ KEEP CODING ★ STAY TRIPPY ★★★
+  </span>
+</div>
+
+<div id="counter">FRAMES: <span id="fps">0</span> | ZOOM: <span id="zoomlvl">1.0</span>x</div>
+
+<script>
+// ============================================================
+//  90s DEMO - FRACTAL ENGINE + BOUNCING EMOJIS
+// ============================================================
+
+const bgCanvas = document.getElementById('bg');
+const bgCtx = bgCanvas.getContext('2d');
+const fCanvas = document.getElementById('fractal');
+const fCtx = fCanvas.getContext('2d');
+const eCanvas = document.getElementById('emojis');
+const eCtx = eCanvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  bgCanvas.width = fCanvas.width = eCanvas.width = W;
+  bgCanvas.height = fCanvas.height = eCanvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─── BACKGROUND PLASMA ───────────────────────────────────────
+function drawPlasma(t) {
+  const idata = bgCtx.createImageData(W, H);
+  const d = idata.data;
+  const scale = 0.005;
+  for (let y = 0; y < H; y += 2) {
+    for (let x = 0; x < W; x += 2) {
+      const v = Math.sin(x * scale + t * 1.1) +
+                Math.sin(y * scale + t * 0.9) +
+                Math.sin((x + y) * scale * 0.7 + t * 1.3) +
+                Math.sin(Math.sqrt((x - W/2)**2 + (y - H/2)**2) * scale * 0.8 + t);
+      const r = Math.sin(v * Math.PI) * 127 + 128 | 0;
+      const g = Math.sin(v * Math.PI + 2.094) * 127 + 128 | 0;
+      const b = Math.sin(v * Math.PI + 4.189) * 127 + 128 | 0;
+      const idx = (y * W + x) * 4;
+      d[idx]=r; d[idx+1]=g; d[idx+2]=b; d[idx+3]=255;
+      if (x+1 < W) { const i2=idx+4; d[i2]=r; d[i2+1]=g; d[i2+2]=b; d[i2+3]=255; }
+      if (y+1 < H) {
+        const i3=((y+1)*W+x)*4; d[i3]=r; d[i3+1]=g; d[i3+2]=b; d[i3+3]=255;
+        if (x+1 < W) { const i4=i3+4; d[i4]=r; d[i4+1]=g; d[i4+2]=b; d[i4+3]=255; }
+      }
+    }
+  }
+  bgCtx.putImageData(idata, 0, 0);
+}
+
+// ─── MANDELBROT FRACTAL ──────────────────────────────────────
+let zoom = 1.0;
+let zoomSpeed = 0.005;
+let cx = -0.7269, cy = 0.1889;  // interesting point
+let fractalMode = 0;
+const fractalPoints = [
+  { cx: -0.7269, cy: 0.1889 },
+  { cx: -0.5251, cy: 0.5258 },
+  { cx: -0.8, cy: 0.156 },
+  { cx: 0.285, cy: 0.013 },
+  { cx: -0.4, cy: 0.6 },
+];
+
+const fW = 200, fH = 150; // low-res for that retro look
+const fBuf = new ImageData(fW, fH);
+let fractalCanvas2 = document.createElement('canvas');
+fractalCanvas2.width = fW; fractalCanvas2.height = fH;
+let fCtx2 = fractalCanvas2.getContext('2d');
+
+function mandelbrot(px, py, maxIter) {
+  let zr = 0, zi = 0, i = 0;
+  while (i < maxIter && zr*zr + zi*zi < 4) {
+    const tmp = zr*zr - zi*zi + px;
+    zi = 2*zr*zi + py;
+    zr = tmp;
+    i++;
+  }
+  return i;
+}
+
+function drawFractal(t) {
+  zoom *= (1 + zoomSpeed);
+  if (zoom > 5000) {
+    zoom = 1;
+    fractalMode = (fractalMode + 1) % fractalPoints.length;
+    cx = fractalPoints[fractalMode].cx;
+    cy = fractalPoints[fractalMode].cy;
+  }
+
+  const maxIter = 64;
+  const scale = 3.5 / zoom;
+  const d = fBuf.data;
+
+  for (let y = 0; y < fH; y++) {
+    for (let x = 0; x < fW; x++) {
+      const px = (x / fW - 0.5) * scale + cx;
+      const py = (y / fH - 0.5) * scale + cy;
+      const n = mandelbrot(px, py, maxIter);
+      const idx = (y * fW + x) * 4;
+      if (n === maxIter) {
+        d[idx]=0; d[idx+1]=0; d[idx+2]=0; d[idx+3]=220;
+      } else {
+        const f = n / maxIter;
+        const phase = f * Math.PI * 6 + t * 2;
+        d[idx]   = Math.sin(phase) * 127 + 128 | 0;
+        d[idx+1] = Math.sin(phase + 2.094) * 127 + 128 | 0;
+        d[idx+2] = Math.sin(phase + 4.189) * 127 + 128 | 0;
+        d[idx+3] = 230;
+      }
+    }
+  }
+
+  fCtx2.putImageData(fBuf, 0, 0);
+
+  // draw pixelated low-rez fractal scaled up to fill screen
+  fCtx.imageSmoothingEnabled = false;
+  fCtx.clearRect(0, 0, W, H);
+  fCtx.drawImage(fractalCanvas2, 0, 0, W, H);
+
+  // overlay a second rotated copy for extra trippy
+  fCtx.save();
+  fCtx.globalAlpha = 0.3;
+  fCtx.globalCompositeOperation = 'screen';
+  fCtx.translate(W/2, H/2);
+  fCtx.rotate(t * 0.15);
+  fCtx.scale(0.7, 0.7);
+  fCtx.drawImage(fractalCanvas2, -W/2, -H/2, W, H);
+  fCtx.restore();
+
+  fCtx.globalAlpha = 1;
+  fCtx.globalCompositeOperation = 'source-over';
+}
+
+// ─── BOUNCING EMOJIS ────────────────────────────────────────
+const EMOJIS = ['😎','🤖','👾','🎮','💾','📺','🕹️','💿','🧠','🔥','⚡','💀','🎸','🌀','🍕','🌈','👽','🤯','💣','🎯'];
+const EMOJI_COUNT = 32;
+
+const emojis = Array.from({length: EMOJI_COUNT}, (_, i) => ({
+  x: Math.random() * W,
+  y: Math.random() * H,
+  vx: (Math.random() - 0.5) * 6 + (Math.random() > 0.5 ? 2 : -2),
+  vy: (Math.random() - 0.5) * 6 + (Math.random() > 0.5 ? 2 : -2),
+  size: Math.floor(Math.random() * 3) * 16 + 24, // 24, 40, or 56 - chunky low-res
+  emoji: EMOJIS[i % EMOJIS.length],
+  spin: Math.random() * Math.PI * 2,
+  spinSpeed: (Math.random() - 0.5) * 0.2,
+  scale: 1,
+  scaleDir: 1,
+  flash: 0,
+}));
+
+function updateEmojis() {
+  eCtx.clearRect(0, 0, W, H);
+  eCtx.imageSmoothingEnabled = false;
+
+  for (const e of emojis) {
+    e.x += e.vx;
+    e.y += e.vy;
+    e.spin += e.spinSpeed;
+    e.scale += 0.01 * e.scaleDir;
+    if (e.scale > 1.4 || e.scale < 0.8) e.scaleDir *= -1;
+    if (e.flash > 0) e.flash--;
+
+    if (e.x < e.size/2) { e.x = e.size/2; e.vx = Math.abs(e.vx); e.flash = 5; }
+    if (e.x > W - e.size/2) { e.x = W - e.size/2; e.vx = -Math.abs(e.vx); e.flash = 5; }
+    if (e.y < e.size/2) { e.y = e.size/2; e.vy = Math.abs(e.vy); e.flash = 5; }
+    if (e.y > H - e.size/2) { e.y = H - e.size/2; e.vy = -Math.abs(e.vy); e.flash = 5; }
+
+    eCtx.save();
+    eCtx.translate(Math.round(e.x / 4) * 4, Math.round(e.y / 4) * 4); // snap to grid for low-rez feel
+    eCtx.rotate(Math.round(e.spin * 4) / 4); // quantize rotation
+    const s = Math.round(e.scale * 4) / 4;
+    eCtx.scale(s, s);
+
+    // flash glow on bounce
+    if (e.flash > 0) {
+      eCtx.shadowBlur = 20;
+      eCtx.shadowColor = '#ffffff';
+    }
+
+    // drop shadow for depth
+    eCtx.shadowOffsetX = 3; eCtx.shadowOffsetY = 3;
+    if (e.flash === 0) { eCtx.shadowBlur = 4; eCtx.shadowColor = 'rgba(0,0,0,0.7)'; }
+
+    eCtx.font = `${e.size}px serif`;
+    eCtx.textAlign = 'center';
+    eCtx.textBaseline = 'middle';
+    eCtx.fillText(e.emoji, 0, 0);
+    eCtx.restore();
+  }
+}
+
+// ─── TUNNEL / STAR FIELD OVERLAY ────────────────────────────
+const stars = Array.from({length: 120}, () => ({
+  x: (Math.random() - 0.5) * 2000,
+  y: (Math.random() - 0.5) * 2000,
+  z: Math.random() * 1000,
+}));
+
+function drawStars() {
+  eCtx.save();
+  eCtx.translate(W/2, H/2);
+  for (const s of stars) {
+    s.z -= 8;
+    if (s.z <= 0) { s.z = 1000; s.x = (Math.random()-0.5)*2000; s.y = (Math.random()-0.5)*2000; }
+    const sx = s.x / s.z * 200;
+    const sy = s.y / s.z * 200;
+    const r = Math.max(1, (1 - s.z/1000) * 4);
+    const bright = (1 - s.z/1000);
+    eCtx.fillStyle = `rgba(255,255,255,${bright.toFixed(2)})`;
+    eCtx.fillRect(Math.round(sx), Math.round(sy), Math.ceil(r), Math.ceil(r));
+  }
+  eCtx.restore();
+}
+
+// ─── SCANLINES ──────────────────────────────────────────────
+function drawScanlines() {
+  eCtx.save();
+  eCtx.globalAlpha = 0.07;
+  eCtx.fillStyle = '#000';
+  for (let y = 0; y < H; y += 4) {
+    eCtx.fillRect(0, y, W, 2);
+  }
+  eCtx.restore();
+}
+
+// ─── MAIN LOOP ───────────────────────────────────────────────
+let t = 0;
+let frames = 0;
+let lastFPS = performance.now();
+
+function loop() {
+  t += 0.03;
+  frames++;
+
+  const now = performance.now();
+  if (now - lastFPS > 500) {
+    document.getElementById('fps').textContent = Math.round(frames * 1000 / (now - lastFPS));
+    document.getElementById('zoomlvl').textContent = zoom.toFixed(1);
+    frames = 0;
+    lastFPS = now;
+  }
+
+  drawPlasma(t);
+  drawFractal(t);
+
+  eCtx.clearRect(0, 0, W, H);
+  drawStars();
+  updateEmojis();
+  drawScanlines();
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
